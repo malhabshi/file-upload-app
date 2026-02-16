@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
+import { File } from '@google-cloud/storage'; // Add this import
 
 // Initialize Storage with credentials from environment variable
 let storage: Storage;
@@ -37,7 +38,8 @@ export async function GET() {
 
     const [files] = await bucket.getFiles({ prefix: 'uploads/' });
     
-    const fileList = await Promise.all(files.map(async (file) => {
+    // FIXED: Added type annotation for 'file'
+    const fileList = await Promise.all(files.map(async (file: File) => {
       const [metadata] = await file.getMetadata();
       const [url] = await file.getSignedUrl({
         action: 'read',
@@ -53,7 +55,7 @@ export async function GET() {
       };
     }));
 
-    // FIXED: Handle undefined timeCreated safely
+    // Handle undefined timeCreated safely
     fileList.sort((a, b) => {
       const dateA = a.timeCreated ? new Date(a.timeCreated).getTime() : 0;
       const dateB = b.timeCreated ? new Date(b.timeCreated).getTime() : 0;
