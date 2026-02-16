@@ -12,7 +12,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse the credentials
     const credentials = JSON.parse(credentialsJson);
+
+    // 🔥 FIX: Replace escaped newlines in the private key
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
 
     const storage = new Storage({
       projectId: credentials.project_id,

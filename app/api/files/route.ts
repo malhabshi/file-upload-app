@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
-import { File } from '@google-cloud/storage'; // Add this import
+import { File } from '@google-cloud/storage';
 
 // Initialize Storage with credentials from environment variable
 let storage: Storage;
@@ -14,7 +14,13 @@ try {
     throw new Error('Missing Firebase credentials');
   }
 
+  // Parse the credentials
   const credentials = JSON.parse(credentialsJson);
+
+  // 🔥 FIX: Replace escaped newlines in the private key
+  if (credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  }
 
   storage = new Storage({
     projectId: credentials.project_id,
@@ -22,9 +28,11 @@ try {
   });
 
   bucket = storage.bucket('studio-9484431255-91d96.firebasestorage.app');
+  
+  console.log('✅ Firebase Storage initialized successfully');
 
 } catch (error) {
-  console.error('Failed to initialize Firebase Storage:', error);
+  console.error('❌ Failed to initialize Firebase Storage:', error);
 }
 
 export async function GET() {
@@ -38,7 +46,6 @@ export async function GET() {
 
     const [files] = await bucket.getFiles({ prefix: 'uploads/' });
     
-    // FIXED: Added type annotation for 'file'
     const fileList = await Promise.all(files.map(async (file: File) => {
       const [metadata] = await file.getMetadata();
       const [url] = await file.getSignedUrl({
