@@ -53,9 +53,12 @@ export async function GET() {
       };
     }));
 
-    fileList.sort((a, b) => 
-      new Date(b.timeCreated).getTime() - new Date(a.timeCreated).getTime()
-    );
+    // FIXED: Handle undefined timeCreated safely
+    fileList.sort((a, b) => {
+      const dateA = a.timeCreated ? new Date(a.timeCreated).getTime() : 0;
+      const dateB = b.timeCreated ? new Date(b.timeCreated).getTime() : 0;
+      return dateB - dateA;
+    });
 
     return NextResponse.json({ files: fileList });
 
