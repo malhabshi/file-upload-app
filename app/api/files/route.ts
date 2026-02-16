@@ -7,15 +7,27 @@ let storage: Storage;
 let bucket: any;
 
 try {
-  const credentialsJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // Try Base64 first, then fall back to regular JSON
+  let credentials;
   
-  if (!credentialsJson) {
+  // Check for Base64 encoded credentials (preferred)
+  const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  
+  if (base64Credentials) {
+    // Decode Base64 to JSON string
+    const jsonString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    credentials = JSON.parse(jsonString);
+    console.log('✅ Using Base64 credentials');
+  } 
+  // Fall back to regular JSON credentials
+  else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    console.log('✅ Using JSON credentials');
+  } 
+  else {
     console.error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set');
     throw new Error('Missing Firebase credentials');
   }
-
-  // Parse the credentials
-  const credentials = JSON.parse(credentialsJson);
 
   // 🔥 FIX: Replace escaped newlines in the private key
   if (credentials.private_key) {

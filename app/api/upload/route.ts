@@ -3,17 +3,29 @@ import { Storage } from '@google-cloud/storage';
 
 export async function POST(request: NextRequest) {
   try {
-    const credentialsJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    // Try Base64 first, then fall back to regular JSON
+    let credentials;
     
-    if (!credentialsJson) {
+    // Check for Base64 encoded credentials (preferred)
+    const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+    
+    if (base64Credentials) {
+      // Decode Base64 to JSON string
+      const jsonString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+      credentials = JSON.parse(jsonString);
+      console.log('✅ Using Base64 credentials');
+    } 
+    // Fall back to regular JSON credentials
+    else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      console.log('✅ Using JSON credentials');
+    } 
+    else {
       return NextResponse.json(
         { error: 'Server configuration error: Missing credentials' },
         { status: 500 }
       );
     }
-
-    // Parse the credentials
-    const credentials = JSON.parse(credentialsJson);
 
     // 🔥 FIX: Replace escaped newlines in the private key
     if (credentials.private_key) {
@@ -76,9 +88,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const hasCredentials = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const hasBase64 = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  const hasJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  
   return NextResponse.json({ 
     message: 'Upload API is ready',
-    env_configured: hasCredentials
+    using_base64: hasBase64,
+    using_json: hasJson,
+    status: 'ok'
   });
 }
