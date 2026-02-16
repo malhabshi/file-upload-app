@@ -1,32 +1,40 @@
 import { NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
-import path from 'path';
-import fs from 'fs';
 
-// Find the credentials file
-const credentialsDir = path.join(process.cwd(), 'credentials');
-let keyFilename = undefined;
+// Initialize Storage with credentials from environment variable
+let storage: Storage;
+let bucket: any;
 
 try {
-  const files = fs.readdirSync(credentialsDir);
-  const jsonFile = files.find(f => f.endsWith('.json'));
-  if (jsonFile) {
-    keyFilename = path.join(credentialsDir, jsonFile);
+  const credentialsJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  
+  if (!credentialsJson) {
+    console.error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set');
+    throw new Error('Missing Firebase credentials');
   }
+
+  const credentials = JSON.parse(credentialsJson);
+
+  storage = new Storage({
+    projectId: credentials.project_id,
+    credentials: credentials
+  });
+
+  bucket = storage.bucket('studio-9484431255-91d96.firebasestorage.app');
+
 } catch (error) {
-  console.log('No credentials folder found');
+  console.error('Failed to initialize Firebase Storage:', error);
 }
-
-const storage = new Storage({
-  projectId: 'studio-9484431255-91d96',
-  ...(keyFilename && { keyFilename })
-});
-
-const bucket = storage.bucket('studio-9484431255-91d96.firebasestorage.app');
 
 export async function GET() {
   try {
-    // Get all files from the uploads folder
+    if (!bucket) {
+      return NextResponse.json(
+        { error: 'Storage not initialized' },
+        { status: 500 }
+      );
+    }
+
     const [files] = await bucket.getFiles({ prefix: 'uploads/' });
     
     const fileList = await Promise.all(files.map(async (file) => {
@@ -38,7 +46,6 @@ export async function GET() {
       
       return {
         name: file.name.replace('uploads/', ''),
-        fullPath: file.name,
         url: url,
         size: metadata.size,
         timeCreated: metadata.timeCreated,
@@ -46,12 +53,9 @@ export async function GET() {
       };
     }));
 
-    // Sort by newest first (handle undefined dates safely)
-fileList.sort((a, b) => {
-  const dateA = a.timeCreated ? new Date(a.timeCreated).getTime() : 0;
-  const dateB = b.timeCreated ? new Date(b.timeCreated).getTime() : 0;
-  return dateB - dateA;
-});
+    fileList.sort((a, b) => 
+      new Date(b.timeCreated).getTime() - new Date(a.timeCreated).getTime()
+    );
 
     return NextResponse.json({ files: fileList });
 

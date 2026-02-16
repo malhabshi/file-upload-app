@@ -1,32 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
-import path from 'path';
-import fs from 'fs';
 
-// Find the credentials file
-const credentialsDir = path.join(process.cwd(), 'credentials');
-let keyFilename = undefined;
+// Initialize Storage with credentials from environment variable
+let storage: Storage;
+let bucket: any;
 
 try {
-  const files = fs.readdirSync(credentialsDir);
-  const jsonFile = files.find(f => f.endsWith('.json'));
-  if (jsonFile) {
-    keyFilename = path.join(credentialsDir, jsonFile);
-    console.log('✅ Found credentials file:', jsonFile);
+  // Get credentials from environment variable
+  const credentialsJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  
+  if (!credentialsJson) {
+    console.error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set');
+    throw new Error('Missing Firebase credentials');
   }
+
+  // Parse the JSON string
+  const credentials = JSON.parse(credentialsJson);
+
+  // Initialize Storage with the credentials
+  storage = new Storage({
+    projectId: credentials.project_id,
+    credentials: credentials
+  });
+
+  // Get the bucket
+  bucket = storage.bucket('studio-9484431255-91d96.firebasestorage.app');
+  
+  console.log('✅ Firebase Storage initialized successfully');
+
 } catch (error) {
-  console.log('No credentials folder found');
+  console.error('❌ Failed to initialize Firebase Storage:', error);
 }
-
-const storage = new Storage({
-  projectId: 'studio-9484431255-91d96',
-  ...(keyFilename && { keyFilename })
-});
-
-const bucket = storage.bucket('studio-9484431255-91d96.firebasestorage.app');
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if bucket was initialized
+    if (!bucket) {
+      return NextResponse.json(
+        { error: 'Storage not initialized - check server logs' },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -83,6 +98,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({ 
     message: 'Upload API is ready',
-    status: 'ok'
+    status: 'ok',
+    env: process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? 'Credentials found' : 'Credentials missing'
   });
 }
