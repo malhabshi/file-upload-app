@@ -11,7 +11,7 @@ try {
   let credentials;
   
   // Check for Base64 encoded credentials (preferred)
-  const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   
   if (base64Credentials) {
     // Decode Base64 to JSON string

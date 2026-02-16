@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Remove 'output: export' - Vercel handles this automatically
+  output: 'export',
   images: {
-    unoptimized: true, // Keep this if you're not using next/image optimization
+    unoptimized: true,
   },
 };
 

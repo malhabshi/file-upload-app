@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     let credentials;
     
     // Check for Base64 encoded credentials (preferred)
-    const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+    const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     
     if (base64Credentials) {
       // Decode Base64 to JSON string
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const hasBase64 = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  const hasBase64 = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   const hasJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   
   return NextResponse.json({ 
