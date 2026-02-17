@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
-export default function UploadPage() {
+// Create a separate component that uses useSearchParams
+function UploadForm() {
   const searchParams = useSearchParams();
   const studentId = searchParams.get('studentId');
   const [file, setFile] = useState<File | null>(null);
@@ -43,27 +45,17 @@ export default function UploadPage() {
         setFile(null);
         (document.getElementById('fileInput') as HTMLInputElement).value = '';
       } else {
-        setMessage(`❌ Error: ${data.error || 'Upload failed'}`);
+        setMessage(`❌ Error: ${data.error}`);
       }
     } catch (error) {
-      console.error('Upload error:', error);
-      setMessage('❌ Upload failed - check console');
+      setMessage('❌ Upload failed');
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div style={{ 
-      padding: '2rem',
-      maxWidth: '600px',
-      margin: '0 auto',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-        File Upload
-      </h1>
-      
+    <>
       {studentId && (
         <div style={{
           marginBottom: '1rem',
@@ -126,6 +118,26 @@ export default function UploadPage() {
           {message}
         </p>
       )}
+    </>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function UploadPage() {
+  return (
+    <div style={{ 
+      padding: '2rem',
+      maxWidth: '600px',
+      margin: '0 auto',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+        File Upload
+      </h1>
+      
+      <Suspense fallback={<div>Loading...</div>}>
+        <UploadForm />
+      </Suspense>
     </div>
   );
 }
