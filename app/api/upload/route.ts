@@ -10,17 +10,19 @@ export async function POST(request: NextRequest) {
     const base64Credentials = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     
     if (base64Credentials) {
-      // Decode Base64 to JSON string
-      const jsonString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-      credentials = JSON.parse(jsonString);
-      console.log('✅ Using Base64 credentials');
-    } 
-    // Fall back to regular JSON credentials
-    else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      console.log('✅ Using JSON credentials');
-    } 
-    else {
+      try {
+        // Decode Base64 to JSON string
+        const jsonString = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+        credentials = JSON.parse(jsonString);
+        console.log('✅ Using Base64 credentials');
+      } catch (e) {
+        console.error('Failed to parse Base64 credentials:', e);
+        return NextResponse.json(
+          { error: 'Invalid Base64 credentials format' },
+          { status: 500 }
+        );
+      }
+    } else {
       return NextResponse.json(
         { error: 'Server configuration error: Missing credentials' },
         { status: 500 }
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const studentId = formData.get('studentId') as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Date.now();
     const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-    const fileName = `uploads/${timestamp}_${safeFileName}`;
+    const fileName = `uploads/${timestamp}_${studentId ? studentId + '_' : ''}${safeFileName}`;
 
     const fileRef = bucket.file(fileName);
     
@@ -63,19 +66,22 @@ export async function POST(request: NextRequest) {
         contentType: file.type,
         metadata: {
           originalName: file.name,
+          studentId: studentId || 'unknown',
           uploadTime: new Date().toISOString()
         }
       }
     });
 
-    await fileRef.makePublic();
-
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    // Generate a signed URL for the file (valid for 7 days)
+    const [url] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     return NextResponse.json({
-      message: '✅ File uploaded to Firebase!',
+      message: '✅ File uploaded successfully!',
       fileName: fileName,
-      url: publicUrl
+      url: url
     });
 
   } catch (error: any) {
@@ -89,12 +95,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   const hasBase64 = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  const hasJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   
   return NextResponse.json({ 
     message: 'Upload API is ready',
     using_base64: hasBase64,
-    using_json: hasJson,
     status: 'ok'
   });
 }
