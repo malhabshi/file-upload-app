@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function UploadPage() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams.get('studentId');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
@@ -25,6 +28,7 @@ export default function UploadPage() {
 
     const formData = new FormData();
     formData.append('file', file);
+    if (studentId) formData.append('studentId', studentId);
 
     try {
       const response = await fetch('/api/upload', {
@@ -39,10 +43,11 @@ export default function UploadPage() {
         setFile(null);
         (document.getElementById('fileInput') as HTMLInputElement).value = '';
       } else {
-        setMessage(`❌ Error: ${data.error}`);
+        setMessage(`❌ Error: ${data.error || 'Upload failed'}`);
       }
     } catch (error) {
-      setMessage('❌ Upload failed');
+      console.error('Upload error:', error);
+      setMessage('❌ Upload failed - check console');
     } finally {
       setUploading(false);
     }
@@ -58,6 +63,19 @@ export default function UploadPage() {
       <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
         File Upload
       </h1>
+      
+      {studentId && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '1rem',
+          backgroundColor: '#e6f7ff',
+          border: '1px solid #91d5ff',
+          borderRadius: '4px',
+          color: '#0050b3'
+        }}>
+          Student ID: {studentId}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} style={{
         padding: '2rem',
